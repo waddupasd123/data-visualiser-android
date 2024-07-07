@@ -80,9 +80,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AddBluetoothDevice(bluetoothManager: BluetoothManager) {
     val bleDevices = remember { bluetoothManager.bleDevices }
+    val isScanning = remember { bluetoothManager.isScanning }
     Button(onClick = { bluetoothManager.startBleScan() }) {
         Text(
-            text = "Add Bluetooth Device"
+            text = if (isScanning.value) "Stop scanning" else "Add Bluetooth device"
         )
     }
 

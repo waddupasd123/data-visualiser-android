@@ -16,6 +16,7 @@ import androidx.annotation.RequiresApi
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 
 class BluetoothManager(
     context: Context,
@@ -27,6 +28,7 @@ class BluetoothManager(
     private val bluetoothAdapter : BluetoothAdapter? = bluetoothManager.adapter
 
     val bleDevices = mutableStateListOf<BluetoothDevice>()
+    val isScanning = mutableStateOf(false)
 
     @RequiresApi(Build.VERSION_CODES.S)
     fun requestPermissions() {
@@ -67,21 +69,22 @@ class BluetoothManager(
     }
 
 
-    private var scanning = false
     private val handler = Handler(Looper.getMainLooper())
     private val SCAN_PERIOD: Long = 10000
     @SuppressLint("MissingPermission")
     fun startBleScan() {
-        Log.d("BLE", "Starting BLE scan")
-        if (!scanning) {
+        if (!isScanning.value) {
             handler.postDelayed({
-                scanning = false
+                isScanning.value = false
                 bluetoothAdapter?.bluetoothLeScanner?.stopScan(scanCallback)
             }, SCAN_PERIOD)
-            scanning = true
+            isScanning.value = true
+            bleDevices.clear()
+            Log.d("BLE", "Starting BLE scan")
             bluetoothAdapter?.bluetoothLeScanner?.startScan(scanCallback)
         } else {
-            scanning = false
+            isScanning.value = false
+            Log.d("BLE", "Stopping BLE scan")
             bluetoothAdapter?.bluetoothLeScanner?.stopScan(scanCallback)
         }
     }
