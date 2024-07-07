@@ -1,5 +1,6 @@
 package com.example.androidapp
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.os.Build
 import android.os.Bundle
@@ -16,6 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -47,7 +49,7 @@ class MainActivity : ComponentActivity() {
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
                 result ->
                     if (result.resultCode == Activity.RESULT_OK) {
-                        Log.e("BLE","BLUETOOTH ENABLED")
+                        Log.d("BLE","BLUETOOTH ENABLED")
                     }
             }
 
@@ -65,7 +67,7 @@ class MainActivity : ComponentActivity() {
                             .padding(innerPadding),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        AddBluetoothDevice()
+                        AddBluetoothDevice(bluetoothManager)
                     }
                 }
 
@@ -74,12 +76,20 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@SuppressLint("MissingPermission")
 @Composable
-fun AddBluetoothDevice() {
-    Button(onClick = { }) {
+fun AddBluetoothDevice(bluetoothManager: BluetoothManager) {
+    val bleDevices = remember { bluetoothManager.bleDevices }
+    Button(onClick = { bluetoothManager.startBleScan() }) {
         Text(
             text = "Add Bluetooth Device"
         )
+    }
+
+    bleDevices.forEach { device ->
+        Button(onClick = { bluetoothManager.connectToDevice(device) }) {
+            Text(text = "${device.name} (${device.address})")
+        }
     }
 }
 
@@ -87,7 +97,8 @@ fun AddBluetoothDevice() {
 @Preview(showBackground = true)
 @Composable
 fun MainPreview() {
+    lateinit var bluetoothManager: BluetoothManager
     AndroidAppTheme {
-        AddBluetoothDevice()
+        AddBluetoothDevice(bluetoothManager)
     }
 }
