@@ -4,7 +4,10 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.content.Context
@@ -16,10 +19,11 @@ import androidx.annotation.RequiresApi
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 
 class BluetoothManager(
-    context: Context,
+    private val context: Context,
     private val permissionsLauncher: ActivityResultLauncher<Array<String>>,
     private val enableBluetoothLauncher: ActivityResultLauncher<Intent>
 ) {
@@ -29,6 +33,8 @@ class BluetoothManager(
 
     val bleDevices = mutableStateListOf<BluetoothDevice>()
     val isScanning = mutableStateOf(false)
+    val connectedDevices = mutableStateListOf<BluetoothDevice>()
+    private val gattConnections = mutableStateMapOf<String, BluetoothGatt>()
 
     @RequiresApi(Build.VERSION_CODES.S)
     fun requestPermissions() {
@@ -52,7 +58,7 @@ class BluetoothManager(
         @SuppressLint("MissingPermission")
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
             result?.device?.let { device ->
-                if (!bleDevices.contains(device)) {
+                if (!bleDevices.contains(device) && !connectedDevices.contains(device)) {
                     bleDevices.add(device)
                     Log.d("BLE", "Device found: ${device.name} - ${device.address}")
                 }
@@ -89,8 +95,44 @@ class BluetoothManager(
         }
     }
 
+
+    @SuppressLint("MissingPermission")
     fun connectToDevice(device: BluetoothDevice) {
         Log.d("BLE", "Connecting to device: ${device.address}")
+        val gatt = device.connectGatt(context, false, object : BluetoothGattCallback() {
+            override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
+                if (newState == BluetoothProfile.STATE_CONNECTED) {
+                    connectedDevices.add(device)
+                    bleDevices.remove(device)
+                    gatt?.discoverServices()
+                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                    Log.d("BLE", "Disconnected from ${device.address}")
+                    connectedDevices.remove(device)
+                    gattConnections.remove(device.address)
+                }
+            }
+
+            override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    Log.d("BLE", "Services discovered for ${device.address}")
+                } else {
+                    Log.w("BLE", "onServicesDiscovered received: $status")
+                }
+            }
+        })
+
+        gattConnections[device.address] = gatt
+    }
+
+    @SuppressLint("MissingPermission")
+    fun disconnectFromDevice(device: BluetoothDevice) {
+        gattConnections[device.address]?.let { gatt ->
+            gatt.disconnect()
+            gatt.close()
+            connectedDevices.remove(device)
+            gattConnections.remove(device.address)
+            Log.d("BLE", "Disconnected from device: ${device.address}")
+        }
     }
 
 
