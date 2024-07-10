@@ -34,8 +34,10 @@ class BluetoothManager(
     val bleDevices = mutableStateListOf<BluetoothDevice>()
     val isScanning = mutableStateOf(false)
     val connectedDevices = mutableStateListOf<BluetoothDevice>()
+    val knownDevices = mutableStateListOf<BluetoothDevice>()
     private val gattConnections = mutableStateMapOf<String, BluetoothGatt>()
 
+    // Bluetooth Permissions
     @RequiresApi(Build.VERSION_CODES.S)
     fun requestPermissions() {
         val permissions = arrayOf(
@@ -49,7 +51,7 @@ class BluetoothManager(
     fun enableBluetooth() {
         if (bluetoothAdapter?.isEnabled == false) {
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-            Log.e("BLE","Requesting bluetooth")
+            Log.d("BLE","Requesting bluetooth")
             enableBluetoothLauncher.launch(enableBtIntent)
         }
     }
@@ -99,15 +101,33 @@ class BluetoothManager(
     @SuppressLint("MissingPermission")
     fun connectToDevice(device: BluetoothDevice) {
         Log.d("BLE", "Connecting to device: ${device.address}")
+
+        // Close any existing GATT connection before creating a new one
+        gattConnections[device.address]?.let { existingGatt ->
+            Log.d("BLE", "Closing existing GATT connection for ${device.address}")
+            existingGatt.disconnect()
+            existingGatt.close()
+            gattConnections.remove(device.address)
+        }
+
         val gatt = device.connectGatt(context, false, object : BluetoothGattCallback() {
             override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
+                    Log.d("BLE", "Connected to ${device.address}")
                     connectedDevices.add(device)
+                    if (!knownDevices.contains(device)) {
+                        knownDevices.add(device)
+                        saveKnownDevices()
+                    }
                     bleDevices.remove(device)
                     gatt?.discoverServices()
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                     Log.d("BLE", "Disconnected from ${device.address}")
                     connectedDevices.remove(device)
+                    gattConnections.remove(device.address)
+                } else if (status != BluetoothGatt.GATT_SUCCESS) {
+                    Log.e("BLE", "Connection failed with status $status")
+                    gatt?.close()
                     gattConnections.remove(device.address)
                 }
             }
@@ -132,6 +152,26 @@ class BluetoothManager(
             connectedDevices.remove(device)
             gattConnections.remove(device.address)
             Log.d("BLE", "Disconnected from device: ${device.address}")
+        }
+    }
+
+
+    // Store and load previous devices
+    private fun saveKnownDevices() {
+        val sharedPreferences = context.getSharedPreferences("BluetoothManager", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        val deviceAddresses = knownDevices.map { it.address }.toSet()
+        editor.putStringSet("KnownDevices", deviceAddresses)
+        editor.apply()
+    }
+
+    fun loadKnownDevices() {
+        val sharedPreferences = context.getSharedPreferences("BluetoothManager", Context.MODE_PRIVATE)
+        val deviceAddresses = sharedPreferences.getStringSet("KnownDevices", emptySet())
+        deviceAddresses?.forEach { address ->
+            bluetoothAdapter?.getRemoteDevice(address)?.let { device ->
+                knownDevices.add(device)
+            }
         }
     }
 

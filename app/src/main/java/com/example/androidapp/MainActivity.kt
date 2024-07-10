@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity() {
 
         bluetoothManager = BluetoothManager(this, permissionsLauncher, enableBluetoothLauncher)
         bluetoothManager.requestPermissions()
+        bluetoothManager.loadKnownDevices()
 
 
         setContent {
@@ -87,12 +88,13 @@ class MainActivity : ComponentActivity() {
 @SuppressLint("MissingPermission")
 @Composable
 fun BluetoothDevices(bluetoothManager: BluetoothManager) {
+    val knownDevices = bluetoothManager.knownDevices
     // Use connected for now
     val connectedDevices = bluetoothManager.connectedDevices
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = "Connected Devices:")
-        connectedDevices.forEach { device ->
+        Text(text = "BLE Devices:")
+        knownDevices.forEach { device ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -114,11 +116,20 @@ fun BluetoothDevices(bluetoothManager: BluetoothManager) {
                 }) {
                     Text(text = "View data")
                 }
-                Button(
-                    onClick = { bluetoothManager.disconnectFromDevice(device) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-                ) {
-                    Text(text = "Disconnect")
+                if (connectedDevices.contains(device)) {
+                    Button(
+                        onClick = { bluetoothManager.disconnectFromDevice(device) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                    ) {
+                        Text(text = "Disconnect")
+                    }
+                } else {
+                    Button(
+                        onClick = { bluetoothManager.connectToDevice(device) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Green)
+                    ) {
+                        Text(text = "Connect")
+                    }
                 }
             }
 
@@ -150,7 +161,7 @@ fun AddBluetoothDevice(bluetoothManager: BluetoothManager) {
 fun MainPreview() {
     AndroidAppTheme {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "Connected Devices:")
+            Text(text = "BLE Devices:")
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
