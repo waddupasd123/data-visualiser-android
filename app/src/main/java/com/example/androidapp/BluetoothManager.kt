@@ -13,14 +13,18 @@ import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.annotation.RequiresApi
-import android.os.Handler
-import android.os.Looper
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import java.io.File
+
+// Manage bluetooth functionality here
 
 class BluetoothManager(
     private val context: Context,
@@ -118,6 +122,7 @@ class BluetoothManager(
                     if (!knownDevices.contains(device)) {
                         knownDevices.add(device)
                         saveKnownDevices()
+                        createDeviceFolder(device)
                     }
                     bleDevices.remove(device)
                     gatt?.discoverServices()
@@ -136,7 +141,7 @@ class BluetoothManager(
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     Log.d("BLE", "Services discovered for ${device.address}")
                 } else {
-                    Log.w("BLE", "onServicesDiscovered received: $status")
+                    Log.d("BLE", "onServicesDiscovered received: $status")
                 }
             }
         })
@@ -175,5 +180,49 @@ class BluetoothManager(
         }
     }
 
+
+    private fun createDeviceFolder(device: BluetoothDevice) {
+        val documentsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+        Log.d("BLE", "Created folder for ${documentsDir.absolutePath}")
+        if (documentsDir != null) {
+            // Parent Folder for all devices
+            val parentFolder = File(documentsDir, "BLESensorData")
+            if (!parentFolder.exists()) {
+                parentFolder.mkdirs()
+            }
+
+            // Folder for device
+            val deviceFolder = File(parentFolder, device.address)
+            if (!deviceFolder.exists()) {
+                deviceFolder.mkdirs()
+            }
+            Log.d("BLE", "Created folder for device: ${device.address} at ${deviceFolder.absolutePath}")
+        }
+    }
+
+    fun deleteDevice(device: BluetoothDevice) {
+        disconnectFromDevice(device)
+        knownDevices.remove(device)
+        saveKnownDevices()
+
+        // Delete Folder
+        val documentsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+        if (documentsDir != null) {
+            val parentFolder = File(documentsDir, "BLESensorData")
+            val deviceFolder = File(parentFolder, device.address)
+            if (deviceFolder.exists()) {
+                val deleted = deviceFolder.deleteRecursively()
+                if (deleted) {
+                    Log.d("BLE", "Deleted folder for device: ${device.address} at ${deviceFolder.absolutePath}")
+                } else {
+                    Log.e("BLE", "Failed to delete folder for device: ${device.address}")
+                }
+            } else {
+                Log.e("BLE", "Folder for device: ${device.address} does not exist")
+            }
+        } else {
+            Log.e("BLE", "Documents directory is null.")
+        }
+    }
 
 }
