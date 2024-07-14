@@ -1,6 +1,5 @@
 package com.example.androidapp
 
-import android.app.Activity
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -12,10 +11,14 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -30,13 +33,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.example.androidapp.ui.theme.AndroidAppTheme
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var bluetoothManager: BluetoothManager
 
-    @RequiresApi(Build.VERSION_CODES.S)
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -57,7 +63,7 @@ class MainActivity : ComponentActivity() {
         val enableBluetoothLauncher =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
                 result ->
-                    if (result.resultCode == Activity.RESULT_OK) {
+                    if (result.resultCode == RESULT_OK) {
                         Log.d("BLE","BLUETOOTH ENABLED")
                     }
             }
@@ -69,16 +75,18 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AndroidAppTheme {
-                // AddBluetoothDevice();
+                val navController = rememberNavController()
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        BluetoothDevices(bluetoothManager)
-                        AddBluetoothDevice(bluetoothManager)
+                    NavHost(navController = navController, startDestination = "devices") {
+                        composable("devices") {
+                            BluetoothDevicesScreen(innerPadding,bluetoothManager,navController)
+                        }
+                        composable("viewdata/{deviceAddress}") { backStackEntry ->
+                            val deviceAddress = backStackEntry.arguments?.getString("deviceAddress")
+                            if (deviceAddress != null) {
+                                ViewData(deviceAddress, bluetoothManager, navController)
+                            }
+                        }
                     }
                 }
 
@@ -111,10 +119,20 @@ fun MainPreview() {
                             fontSize = 8.sp
                         )
                     }
-                    Button(onClick = {
-                        // TO DO
-                    }) {
-                        Text(text = "View data")
+                    Button(onClick = { }, modifier = Modifier.padding(0.dp) ) {
+                        Row(
+                            modifier = Modifier.padding(0.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = "View data")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Filled.CheckCircle,
+                                contentDescription = "Notifications Enabled",
+                                tint = Color.Green,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                     Button(
                         onClick = { },

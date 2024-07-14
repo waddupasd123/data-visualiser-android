@@ -3,10 +3,16 @@ package com.example.androidapp
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -23,14 +29,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 
 // Manage main bluetooth screen
+@Composable
+fun BluetoothDevicesScreen(innerPadding: PaddingValues, bluetoothManager: BluetoothManager, navController: NavController) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        BluetoothDevices(bluetoothManager, navController)
+        AddBluetoothDevice(bluetoothManager)
+    }
+}
 
 @SuppressLint("MissingPermission")
 @Composable
-fun BluetoothDevices(bluetoothManager: BluetoothManager) {
+private fun BluetoothDevices(bluetoothManager: BluetoothManager, navController: NavController) {
     val knownDevices = bluetoothManager.knownDevices
     val connectedDevices = bluetoothManager.connectedDevices
+    val notificationsEnabled = bluetoothManager.notificationsManager
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text = "BLE Devices:")
@@ -55,7 +75,7 @@ fun BluetoothDevices(bluetoothManager: BluetoothManager) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column() {
+                Column {
                     Text(
                         text = device.name,
                     )
@@ -64,17 +84,28 @@ fun BluetoothDevices(bluetoothManager: BluetoothManager) {
                         fontSize = 8.sp
                     )
                 }
-                Button(onClick = {
-                    // TO DO
-                }) {
-                    Text(text = "View data")
+                Button(onClick = { navController.navigate("viewdata/${device.address}") }) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "View data",  fontSize = 12.sp)
+                        if (notificationsEnabled[device.address] == true) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Filled.CheckCircle,
+                                contentDescription = "Notifications Enabled",
+                                tint = Color.Green,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                 }
                 if (connectedDevices.contains(device)) {
                     Button(
                         onClick = { bluetoothManager.disconnectFromDevice(device) },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                     ) {
-                        Text(text = "Disconnect")
+                        Text(text = "Disconnect", fontSize = 12.sp)
                     }
                 } else {
                     Button(
@@ -96,7 +127,7 @@ fun BluetoothDevices(bluetoothManager: BluetoothManager) {
 
 @SuppressLint("MissingPermission")
 @Composable
-fun AddBluetoothDevice(bluetoothManager: BluetoothManager) {
+private fun AddBluetoothDevice(bluetoothManager: BluetoothManager) {
     val bleDevices = remember { bluetoothManager.bleDevices }
     val isScanning = remember { bluetoothManager.isScanning }
     Button(onClick = { bluetoothManager.startBleScan() }) {
@@ -111,3 +142,5 @@ fun AddBluetoothDevice(bluetoothManager: BluetoothManager) {
         }
     }
 }
+
+

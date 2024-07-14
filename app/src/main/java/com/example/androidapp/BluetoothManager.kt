@@ -6,6 +6,8 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanCallback
@@ -23,6 +25,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import java.io.File
+import java.util.UUID
 
 // Manage bluetooth functionality here
 
@@ -35,11 +38,21 @@ class BluetoothManager(
     private val bluetoothManager : BluetoothManager = context.getSystemService(BluetoothManager::class.java)
     private val bluetoothAdapter : BluetoothAdapter? = bluetoothManager.adapter
 
+    private val serviceUUID = UUID.fromString("4fafc201-1fb5-459e-8fcc-c5c9c331914b")
+    private val characteristicUUID = UUID.fromString("beb5483e-36e1-4688-b7f5-ea07361b26a8")
+
     val bleDevices = mutableStateListOf<BluetoothDevice>()
     val isScanning = mutableStateOf(false)
     val connectedDevices = mutableStateListOf<BluetoothDevice>()
     val knownDevices = mutableStateListOf<BluetoothDevice>()
     private val gattConnections = mutableStateMapOf<String, BluetoothGatt>()
+
+    val notificationsManager = mutableStateMapOf<String, Boolean>()
+
+
+    // REMOVE LATER FOR FILE STORAGE - FOR TESTING RIGHT NOW
+    val deviceDataMap = mutableStateMapOf<String, Int>()
+
 
     // Bluetooth Permissions
     @RequiresApi(Build.VERSION_CODES.S)
@@ -82,14 +95,14 @@ class BluetoothManager(
 
 
     private val handler = Handler(Looper.getMainLooper())
-    private val SCAN_PERIOD: Long = 10000
+    private val scanPeriod: Long = 10000
     @SuppressLint("MissingPermission")
     fun startBleScan() {
         if (!isScanning.value) {
             handler.postDelayed({
                 isScanning.value = false
                 bluetoothAdapter?.bluetoothLeScanner?.stopScan(scanCallback)
-            }, SCAN_PERIOD)
+            }, scanPeriod)
             isScanning.value = true
             bleDevices.clear()
             Log.d("BLE", "Starting BLE scan")
@@ -130,23 +143,93 @@ class BluetoothManager(
                     Log.d("BLE", "Disconnected from ${device.address}")
                     connectedDevices.remove(device)
                     gattConnections.remove(device.address)
+                    notificationsManager[device.address] = false
                 } else if (status != BluetoothGatt.GATT_SUCCESS) {
                     Log.e("BLE", "Connection failed with status $status")
                     gatt?.close()
                     gattConnections.remove(device.address)
+                    notificationsManager[device.address] = false
                 }
             }
 
+            @RequiresApi(Build.VERSION_CODES.TIRAMISU)
             override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
                 if (status == BluetoothGatt.GATT_SUCCESS) {
-                    Log.d("BLE", "Services discovered for ${device.address}")
+                    notificationsManager[device.address] = false
                 } else {
                     Log.d("BLE", "onServicesDiscovered received: $status")
                 }
             }
+
+            // https://stackoverflow.com/questions/73438580/new-oncharacteristicread-method-not-working
+            @Suppress("DEPRECATION")
+            @Deprecated(
+                "Used natively in Android 12 and lower",
+                ReplaceWith("onCharacteristicRead(gatt, characteristic, characteristic.value, status)")
+            )
+            override fun onCharacteristicRead(
+                gatt: BluetoothGatt?,
+                characteristic: BluetoothGattCharacteristic?,
+                status: Int)
+            {
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    if (characteristic?.uuid == characteristicUUID) {
+                        val data = characteristic?.getIntValue(
+                            BluetoothGattCharacteristic.FORMAT_SINT32,
+                            0
+                        )
+                        updateDeviceData(gatt?.device?.address ?: "", data)
+                        Log.d("BLE", "Characteristic read: $data")
+                    }
+                }
+            }
+
+            @Suppress("DEPRECATION")
+            @Deprecated(
+                "Used natively in Android 12 and lower",
+                ReplaceWith("onCharacteristicChanged(gatt, characteristic, characteristic.value)")
+            )
+            override fun onCharacteristicChanged(gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic?) {
+                if (characteristic?.uuid == characteristicUUID) {
+                    val data =
+                        characteristic?.getIntValue(BluetoothGattCharacteristic.FORMAT_SINT32, 0)
+                    updateDeviceData(gatt?.device?.address ?: "", data)
+                    Log.d("BLE", "Characteristic changed: $data")
+                }
+            }
+
         })
 
         gattConnections[device.address] = gatt
+    }
+
+    // Update data here - MOVE LATER TO ANOTHER FILE DEDICATED FOR DATA HANDLING
+    private fun updateDeviceData(deviceAddress: String, data: Int?) {
+        if (data != null) {
+            deviceDataMap[deviceAddress] = data
+        }
+    }
+
+    // Enables auto update
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @SuppressLint("MissingPermission")
+    fun toggleCharacteristicNotification(deviceAddress: String) {
+        val gatt = gattConnections[deviceAddress]
+        val characteristic = gatt?.getService(serviceUUID)?.getCharacteristic(characteristicUUID)
+        val enable = !notificationsManager[deviceAddress]!!
+        gatt?.setCharacteristicNotification(characteristic, enable)
+        Log.d("BLE", "CHARACTERISTIC $enable")
+        characteristic?.descriptors?.forEach { descriptor ->
+            if (enable) {
+                val status = gatt.writeDescriptor(descriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+                Log.d("BLE", "DESCRIPTOR ENABLED: $status")
+                if (status == 0) notificationsManager[deviceAddress] = true
+            } else {
+                val status = gatt.writeDescriptor(descriptor, BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
+                Log.d("BLE", "DESCRIPTOR DISABLED: $status")
+                if (status == 0) notificationsManager[deviceAddress] = false
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -156,6 +239,7 @@ class BluetoothManager(
             gatt.close()
             connectedDevices.remove(device)
             gattConnections.remove(device.address)
+            notificationsManager[device.address] = false
             Log.d("BLE", "Disconnected from device: ${device.address}")
         }
     }
