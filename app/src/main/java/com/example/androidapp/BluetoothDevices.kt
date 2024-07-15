@@ -84,7 +84,7 @@ private fun BluetoothDevices(bluetoothManager: BluetoothManager, navController: 
                         fontSize = 8.sp
                     )
                 }
-                Button(onClick = { navController.navigate("viewdata/${device.address}") }) {
+                Button(onClick = { navController.navigate("viewData/${device.address}") }) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {

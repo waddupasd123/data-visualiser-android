@@ -1,14 +1,17 @@
 package com.example.androidapp
 
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +25,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -41,12 +45,15 @@ import com.example.androidapp.ui.theme.AndroidAppTheme
 class MainActivity : ComponentActivity() {
 
     private lateinit var bluetoothManager: BluetoothManager
+    private lateinit var dataManager: DataManager
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Initialise bluetooth manager
         val permissionsLauncher =
             registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             var allPermissionsGranted = true
@@ -56,7 +63,7 @@ class MainActivity : ComponentActivity() {
             if (allPermissionsGranted) {
                 bluetoothManager.enableBluetooth()
             } else {
-                Log.e("BLE", "Permissions not granted")
+                Log.e("BluetoothManager", "Permissions not granted")
             }
         }
 
@@ -64,27 +71,49 @@ class MainActivity : ComponentActivity() {
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
                 result ->
                     if (result.resultCode == RESULT_OK) {
-                        Log.d("BLE","BLUETOOTH ENABLED")
+                        Log.d("BluetoothManager","Intent enabled")
                     }
             }
 
-        bluetoothManager = BluetoothManager(this, permissionsLauncher, enableBluetoothLauncher)
+        // Initialise data manager
+        val createFileLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val uri: Uri? = result.data?.data
+                if (uri != null) {
+                    //dataManager.addCsvFile(uri)
+                    Toast.makeText(this, "CSV file created: $uri", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this, "Failed to create CSV file", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        dataManager = DataManager(this, createFileLauncher)
+        bluetoothManager = BluetoothManager(this, dataManager, permissionsLauncher, enableBluetoothLauncher)
         bluetoothManager.requestPermissions()
         bluetoothManager.loadKnownDevices()
+
+
+        val context = this
 
 
         setContent {
             AndroidAppTheme {
                 val navController = rememberNavController()
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                ) { innerPadding ->
                     NavHost(navController = navController, startDestination = "devices") {
                         composable("devices") {
-                            BluetoothDevicesScreen(innerPadding,bluetoothManager,navController)
+                            BluetoothDevicesScreen(innerPadding, bluetoothManager, navController)
+
                         }
-                        composable("viewdata/{deviceAddress}") { backStackEntry ->
+                        composable("viewData/{deviceAddress}") { backStackEntry ->
                             val deviceAddress = backStackEntry.arguments?.getString("deviceAddress")
                             if (deviceAddress != null) {
-                                ViewData(deviceAddress, bluetoothManager, navController)
+                                ViewData(context, deviceAddress, bluetoothManager, dataManager, navController)
                             }
                         }
                     }
@@ -145,6 +174,28 @@ fun MainPreview() {
                     }
                 }
 
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun BoxPreview() {
+    AndroidAppTheme {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+        ) { innerPadding ->
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Select directory first",
+                    modifier = Modifier.align(Alignment.Center),
+                    fontSize = 25.sp,
+                )
+            }
         }
     }
 }

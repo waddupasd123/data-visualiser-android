@@ -15,7 +15,6 @@ import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -24,13 +23,14 @@ import androidx.annotation.RequiresApi
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
-import java.io.File
 import java.util.UUID
+
 
 // Manage bluetooth functionality here
 
 class BluetoothManager(
     private val context: Context,
+    private val dataManager: DataManager,
     private val permissionsLauncher: ActivityResultLauncher<Array<String>>,
     private val enableBluetoothLauncher: ActivityResultLauncher<Intent>
 ) {
@@ -68,7 +68,7 @@ class BluetoothManager(
     fun enableBluetooth() {
         if (bluetoothAdapter?.isEnabled == false) {
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-            Log.d("BLE","Requesting bluetooth")
+            Log.d("BluetoothManager","Requesting bluetooth")
             enableBluetoothLauncher.launch(enableBtIntent)
         }
     }
@@ -79,7 +79,7 @@ class BluetoothManager(
             result?.device?.let { device ->
                 if (!bleDevices.contains(device) && !connectedDevices.contains(device)) {
                     bleDevices.add(device)
-                    Log.d("BLE", "Device found: ${device.name} - ${device.address}")
+                    Log.d("BluetoothManager", "Device found: ${device.name} - ${device.address}")
                 }
             }
         }
@@ -89,7 +89,7 @@ class BluetoothManager(
         }
 
         override fun onScanFailed(errorCode: Int) {
-            Log.e("BLE", "Scan failed with error: $errorCode")
+            Log.e("BluetoothManager", "Scan failed with error: $errorCode")
         }
     }
 
@@ -105,11 +105,11 @@ class BluetoothManager(
             }, scanPeriod)
             isScanning.value = true
             bleDevices.clear()
-            Log.d("BLE", "Starting BLE scan")
+            Log.d("BluetoothManager", "Starting BLE scan")
             bluetoothAdapter?.bluetoothLeScanner?.startScan(scanCallback)
         } else {
             isScanning.value = false
-            Log.d("BLE", "Stopping BLE scan")
+            Log.d("BluetoothManager", "Stopping BLE scan")
             bluetoothAdapter?.bluetoothLeScanner?.stopScan(scanCallback)
         }
     }
@@ -117,11 +117,11 @@ class BluetoothManager(
 
     @SuppressLint("MissingPermission")
     fun connectToDevice(device: BluetoothDevice) {
-        Log.d("BLE", "Connecting to device: ${device.address}")
+        Log.d("BluetoothManager", "Connecting to device: ${device.address}")
 
         // Close any existing GATT connection before creating a new one
         gattConnections[device.address]?.let { existingGatt ->
-            Log.d("BLE", "Closing existing GATT connection for ${device.address}")
+            Log.d("BluetoothManager", "Closing existing GATT connection for ${device.address}")
             existingGatt.disconnect()
             existingGatt.close()
             gattConnections.remove(device.address)
@@ -130,22 +130,21 @@ class BluetoothManager(
         val gatt = device.connectGatt(context, false, object : BluetoothGattCallback() {
             override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    Log.d("BLE", "Connected to ${device.address}")
+                    Log.d("BluetoothManager", "Connected to ${device.address}")
                     connectedDevices.add(device)
                     if (!knownDevices.contains(device)) {
                         knownDevices.add(device)
                         saveKnownDevices()
-                        createDeviceFolder(device)
                     }
                     bleDevices.remove(device)
                     gatt?.discoverServices()
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    Log.d("BLE", "Disconnected from ${device.address}")
+                    Log.d("BluetoothManager", "Disconnected from ${device.address}")
                     connectedDevices.remove(device)
                     gattConnections.remove(device.address)
                     notificationsManager[device.address] = false
                 } else if (status != BluetoothGatt.GATT_SUCCESS) {
-                    Log.e("BLE", "Connection failed with status $status")
+                    Log.e("BluetoothManager", "Connection failed with status $status")
                     gatt?.close()
                     gattConnections.remove(device.address)
                     notificationsManager[device.address] = false
@@ -157,7 +156,7 @@ class BluetoothManager(
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     notificationsManager[device.address] = false
                 } else {
-                    Log.d("BLE", "onServicesDiscovered received: $status")
+                    Log.d("BluetoothManager", "onServicesDiscovered received: $status")
                 }
             }
 
@@ -179,7 +178,7 @@ class BluetoothManager(
                             0
                         )
                         updateDeviceData(gatt?.device?.address ?: "", data)
-                        Log.d("BLE", "Characteristic read: $data")
+                        Log.d("BluetoothManager", "Characteristic read: $data")
                     }
                 }
             }
@@ -194,7 +193,7 @@ class BluetoothManager(
                     val data =
                         characteristic?.getIntValue(BluetoothGattCharacteristic.FORMAT_SINT32, 0)
                     updateDeviceData(gatt?.device?.address ?: "", data)
-                    Log.d("BLE", "Characteristic changed: $data")
+                    Log.d("BluetoothManager", "Characteristic changed: $data")
                 }
             }
 
@@ -218,15 +217,15 @@ class BluetoothManager(
         val characteristic = gatt?.getService(serviceUUID)?.getCharacteristic(characteristicUUID)
         val enable = !notificationsManager[deviceAddress]!!
         gatt?.setCharacteristicNotification(characteristic, enable)
-        Log.d("BLE", "CHARACTERISTIC $enable")
+        Log.d("BluetoothManager", "CHARACTERISTIC $enable")
         characteristic?.descriptors?.forEach { descriptor ->
             if (enable) {
                 val status = gatt.writeDescriptor(descriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
-                Log.d("BLE", "DESCRIPTOR ENABLED: $status")
+                Log.d("BluetoothManager", "DESCRIPTOR ENABLED: $status")
                 if (status == 0) notificationsManager[deviceAddress] = true
             } else {
                 val status = gatt.writeDescriptor(descriptor, BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
-                Log.d("BLE", "DESCRIPTOR DISABLED: $status")
+                Log.d("BluetoothManager", "DESCRIPTOR DISABLED: $status")
                 if (status == 0) notificationsManager[deviceAddress] = false
             }
         }
@@ -240,7 +239,7 @@ class BluetoothManager(
             connectedDevices.remove(device)
             gattConnections.remove(device.address)
             notificationsManager[device.address] = false
-            Log.d("BLE", "Disconnected from device: ${device.address}")
+            Log.d("BluetoothManager", "Disconnected from device: ${device.address}")
         }
     }
 
@@ -264,49 +263,12 @@ class BluetoothManager(
         }
     }
 
-
-    private fun createDeviceFolder(device: BluetoothDevice) {
-        val documentsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-        Log.d("BLE", "Created folder for ${documentsDir.absolutePath}")
-        if (documentsDir != null) {
-            // Parent Folder for all devices
-            val parentFolder = File(documentsDir, "BLESensorData")
-            if (!parentFolder.exists()) {
-                parentFolder.mkdirs()
-            }
-
-            // Folder for device
-            val deviceFolder = File(parentFolder, device.address)
-            if (!deviceFolder.exists()) {
-                deviceFolder.mkdirs()
-            }
-            Log.d("BLE", "Created folder for device: ${device.address} at ${deviceFolder.absolutePath}")
-        }
-    }
-
     fun deleteDevice(device: BluetoothDevice) {
         disconnectFromDevice(device)
         knownDevices.remove(device)
         saveKnownDevices()
 
-        // Delete Folder
-        val documentsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-        if (documentsDir != null) {
-            val parentFolder = File(documentsDir, "BLESensorData")
-            val deviceFolder = File(parentFolder, device.address)
-            if (deviceFolder.exists()) {
-                val deleted = deviceFolder.deleteRecursively()
-                if (deleted) {
-                    Log.d("BLE", "Deleted folder for device: ${device.address} at ${deviceFolder.absolutePath}")
-                } else {
-                    Log.e("BLE", "Failed to delete folder for device: ${device.address}")
-                }
-            } else {
-                Log.e("BLE", "Folder for device: ${device.address} does not exist")
-            }
-        } else {
-            Log.e("BLE", "Documents directory is null.")
-        }
+        dataManager.deleteFolder(device.address)
     }
 
 }
