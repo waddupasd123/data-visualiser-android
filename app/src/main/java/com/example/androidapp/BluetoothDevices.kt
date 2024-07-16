@@ -33,21 +33,21 @@ import androidx.navigation.NavController
 
 // Manage main bluetooth screen
 @Composable
-fun BluetoothDevicesScreen(innerPadding: PaddingValues, bluetoothManager: BluetoothManager, navController: NavController) {
+fun BluetoothDevicesScreen(innerPadding: PaddingValues, bluetoothManager: BluetoothManager, dataManager: DataManager, navController: NavController) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(innerPadding),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        BluetoothDevices(bluetoothManager, navController)
+        BluetoothDevices(bluetoothManager, dataManager, navController)
         AddBluetoothDevice(bluetoothManager)
     }
 }
 
 @SuppressLint("MissingPermission")
 @Composable
-private fun BluetoothDevices(bluetoothManager: BluetoothManager, navController: NavController) {
+private fun BluetoothDevices(bluetoothManager: BluetoothManager, dataManager: DataManager, navController: NavController) {
     val knownDevices = bluetoothManager.knownDevices
     val connectedDevices = bluetoothManager.connectedDevices
     val notificationsEnabled = bluetoothManager.notificationsManager
@@ -89,7 +89,7 @@ private fun BluetoothDevices(bluetoothManager: BluetoothManager, navController: 
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(text = "View data",  fontSize = 12.sp)
-                        if (notificationsEnabled[device.address] == true) {
+                        if (notificationsEnabled[device.address] == true && dataManager.selectedFiles[device.address] != null) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(
                                 imageVector = Icons.Filled.CheckCircle,

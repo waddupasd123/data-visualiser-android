@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -45,7 +44,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var bluetoothManager: BluetoothManager
     private lateinit var dataManager: DataManager
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,7 +88,7 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     NavHost(navController = navController, startDestination = "devices") {
                         composable("devices") {
-                            BluetoothDevicesScreen(innerPadding, bluetoothManager, navController)
+                            BluetoothDevicesScreen(innerPadding, bluetoothManager, dataManager, navController)
                         }
                         composable("viewData/{deviceAddress}") { backStackEntry ->
                             val deviceAddress = backStackEntry.arguments?.getString("deviceAddress")

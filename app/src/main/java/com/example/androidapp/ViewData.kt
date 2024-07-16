@@ -2,7 +2,6 @@ package com.example.androidapp
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
@@ -55,10 +54,10 @@ fun ViewData(
 ) {
     val notificationsEnabled = bluetoothManager.notificationsManager[deviceAddress]
     // REMOVE LATER
-    val allDeviceData = bluetoothManager.deviceDataMap
+    val deviceData = dataManager.deviceDataMap[deviceAddress]
 
     var selectedDirectoryUri by remember { mutableStateOf(dataManager.getDirectoryUri(deviceAddress)) }
-    var selectedFile = dataManager.selectedFiles[deviceAddress]
+    val selectedFile = dataManager.selectedFiles[deviceAddress]
     val csvFilesList = selectedDirectoryUri?.let { dataManager.deviceFilesList[it] } ?: emptySet()
 
     val openDocumentTreeLauncher = rememberLauncherForActivityResult(
@@ -136,6 +135,7 @@ fun ViewData(
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Text(text = deviceData.toString(), fontSize = 20.sp)
                 Button(
                     onClick = {
                         if (dataManager.createCsvFile(deviceAddress) != null) {
@@ -171,7 +171,7 @@ fun ViewData(
                             Text(text = csvFile, modifier = Modifier.weight(1f))
                             if (selectedFile == fileUri ) {
                                 Button(
-                                    onClick = { dataManager.selectFile(deviceAddress, fileUri) },
+                                    onClick = { dataManager.selectFile(deviceAddress, null) },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color.Green)
                                 ) {
                                     Text(text = "Selected", fontSize = 12.sp)
@@ -184,23 +184,15 @@ fun ViewData(
                                     Text(text = "Select")
                                 }
                             }
-                            
-                            IconButton(
-                                onClick = {
 
-                                }
-                            ) {
-                                IconButton(onClick =  {
-                                    showDialog = true
-                                }) {
-                                    Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = Color.Red)
-                                }
+                            IconButton(onClick =  {
+                                showDialog = true
+                            }) {
+                                Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = Color.Red)
                             }
                         }
                     }
                 }
-
-                Text(text = allDeviceData[deviceAddress].toString(), fontSize = 20.sp)
             }
         }
     }

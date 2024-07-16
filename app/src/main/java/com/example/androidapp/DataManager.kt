@@ -1,6 +1,7 @@
 package com.example.androidapp
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
@@ -20,11 +21,14 @@ class DataManager(
     // Device uri to list of filenames
     val deviceFilesList = mutableStateMapOf<Uri, MutableSet<String>>()
     // Device address to selected file uri
-    val selectedFiles = mutableStateMapOf<String, Uri>()
+    val selectedFiles = mutableStateMapOf<String, Uri?>()
+    // Device data
+    val deviceDataMap = mutableStateMapOf<String, Int>()
+
+    private val sharedPreferences: SharedPreferences = context.getSharedPreferences("DataManager", Context.MODE_PRIVATE)
 
     fun loadDeviceFiles(deviceAddress: String) {
         val deviceUri = getDirectoryUri(deviceAddress)
-        val sharedPreferences = context.getSharedPreferences("DataManager", Context.MODE_PRIVATE)
         deviceUri?.let {
             val files = sharedPreferences.getStringSet(deviceUri.toString(), emptySet())?.toMutableSet() ?: mutableSetOf()
             deviceFilesList[deviceUri] = files
@@ -32,14 +36,8 @@ class DataManager(
     }
 
     fun getDirectoryUri(deviceAddress: String): Uri? {
-        val sharedPreferences = context.getSharedPreferences("DataManager", Context.MODE_PRIVATE)
         val uriString = sharedPreferences.getString(deviceAddress, null)
         return if (uriString != null) Uri.parse(uriString) else null
-    }
-
-    fun setDirectoryUri(deviceAddress: String, uri: Uri) {
-        val sharedPreferences = context.getSharedPreferences("DataManager", Context.MODE_PRIVATE)
-        sharedPreferences.edit().putString(deviceAddress, uri.toString()).apply()
     }
 
     private fun createFolder(folderName: String, parentUri: Uri): Uri? {
@@ -61,14 +59,13 @@ class DataManager(
     fun createDeviceFolder(deviceAddress: String, parentUri: Uri): Uri? {
         val uri = createFolder(deviceAddress, parentUri)
         if (uri != null) {
-            setDirectoryUri(deviceAddress, uri)
+            sharedPreferences.edit().putString(deviceAddress, uri.toString()).apply()
         }
         return uri
     }
 
     fun deleteFolder(deviceAddress: String) {
         val uri = getDirectoryUri(deviceAddress)
-        val sharedPreferences = context.getSharedPreferences("DataManager", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
         // Remove device address to directory uri
         editor.remove(deviceAddress)
@@ -109,7 +106,16 @@ class DataManager(
                     "text/csv",
                     fileName
                 )
-                val sharedPreferences = context.getSharedPreferences("DataManager", Context.MODE_PRIVATE)
+
+                // https://stackoverflow.com/questions/72489875/how-do-i-append-text-to-existing-text-file
+                val contentResolver = context.applicationContext.contentResolver
+                if (fileUri != null) {
+                    contentResolver.openOutputStream(fileUri, "wa")?.writer().use {
+                        it?.write("Time,Value\n")
+                    }
+                }
+
+                // Update variables
                 // Filename to uri
                 sharedPreferences.edit().putString(fileName, fileUri.toString()).apply()
                 // Device uri to filename
@@ -134,20 +140,14 @@ class DataManager(
         }
     }
 
-    fun getCsvFilesList(deviceUri: Uri): List<String> {
-        val sharedPreferences = context.getSharedPreferences("DataManager", Context.MODE_PRIVATE)
-        return sharedPreferences.getStringSet(deviceUri.toString(), emptySet())?.toList() ?: emptyList()
-    }
 
     fun getFileUri(fileName: String): Uri {
-        val sharedPreferences = context.getSharedPreferences("DataManager", Context.MODE_PRIVATE)
         return Uri.parse(sharedPreferences.getString(fileName, ""))
     }
 
     fun deleteCsvFile(deviceAddress: String, fileName: String) {
         val fileUri = getFileUri(fileName)
         val deviceUri = getDirectoryUri(deviceAddress)
-        val sharedPreferences = context.getSharedPreferences("DataManager", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
         //  Remove filenames to file uri
         editor.remove(fileName)
@@ -177,7 +177,22 @@ class DataManager(
         }
     }
 
-    fun selectFile(deviceAddress: String, fileUri: Uri) {
+    fun selectFile(deviceAddress: String, fileUri: Uri?) {
         selectedFiles[deviceAddress] = fileUri
+    }
+
+    // Update data here
+    fun updateDeviceData(deviceAddress: String, data: Int?) {
+        if (data != null) {
+            deviceDataMap[deviceAddress] = data
+            val contentResolver = context.applicationContext.contentResolver
+            val fileUri = selectedFiles[deviceAddress]
+            if (fileUri != null) {
+                val timestamp = System.currentTimeMillis()
+                contentResolver.openOutputStream(fileUri, "wa")?.writer().use {
+                    it?.write("$timestamp,$data\n")
+                }
+            }
+        }
     }
 }

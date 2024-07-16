@@ -14,6 +14,7 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -49,10 +50,7 @@ class BluetoothManager(
 
     val notificationsManager = mutableStateMapOf<String, Boolean>()
 
-
-    // REMOVE LATER FOR FILE STORAGE - FOR TESTING RIGHT NOW
-    val deviceDataMap = mutableStateMapOf<String, Int>()
-
+    private val sharedPreferences: SharedPreferences = context.getSharedPreferences("BluetoothManager", Context.MODE_PRIVATE)
 
     // Bluetooth Permissions
     @RequiresApi(Build.VERSION_CODES.S)
@@ -177,8 +175,8 @@ class BluetoothManager(
                             BluetoothGattCharacteristic.FORMAT_SINT32,
                             0
                         )
-                        updateDeviceData(gatt?.device?.address ?: "", data)
-                        Log.d("BluetoothManager", "Characteristic read: $data")
+                        dataManager.updateDeviceData(gatt?.device?.address ?: "", data)
+                        // Log.d("BluetoothManager", "Characteristic read: $data")
                     }
                 }
             }
@@ -192,8 +190,8 @@ class BluetoothManager(
                 if (characteristic?.uuid == characteristicUUID) {
                     val data =
                         characteristic?.getIntValue(BluetoothGattCharacteristic.FORMAT_SINT32, 0)
-                    updateDeviceData(gatt?.device?.address ?: "", data)
-                    Log.d("BluetoothManager", "Characteristic changed: $data")
+                    dataManager.updateDeviceData(gatt?.device?.address ?: "", data)
+                    // Log.d("BluetoothManager", "Characteristic changed: $data")
                 }
             }
 
@@ -202,12 +200,6 @@ class BluetoothManager(
         gattConnections[device.address] = gatt
     }
 
-    // Update data here - MOVE LATER TO ANOTHER FILE DEDICATED FOR DATA HANDLING
-    private fun updateDeviceData(deviceAddress: String, data: Int?) {
-        if (data != null) {
-            deviceDataMap[deviceAddress] = data
-        }
-    }
 
     // Enables auto update
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -246,7 +238,6 @@ class BluetoothManager(
 
     // Store and load previous devices
     private fun saveKnownDevices() {
-        val sharedPreferences = context.getSharedPreferences("BluetoothManager", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
         val deviceAddresses = knownDevices.map { it.address }.toSet()
         editor.putStringSet("KnownDevices", deviceAddresses)
@@ -254,7 +245,6 @@ class BluetoothManager(
     }
 
     fun loadKnownDevices() {
-        val sharedPreferences = context.getSharedPreferences("BluetoothManager", Context.MODE_PRIVATE)
         val deviceAddresses = sharedPreferences.getStringSet("KnownDevices", emptySet())
         deviceAddresses?.forEach { address ->
             bluetoothAdapter?.getRemoteDevice(address)?.let { device ->
