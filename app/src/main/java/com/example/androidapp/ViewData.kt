@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -56,8 +57,9 @@ fun ViewData(
     // REMOVE LATER
     val allDeviceData = bluetoothManager.deviceDataMap
 
-    var selectedDirectoryUri by remember { mutableStateOf<Uri?>(dataManager.getDirectoryUri(deviceAddress)) }
-    val csvFilesList = selectedDirectoryUri?.let { dataManager.deviceFilesList[it] } ?: emptySet<String>()
+    var selectedDirectoryUri by remember { mutableStateOf(dataManager.getDirectoryUri(deviceAddress)) }
+    var selectedFile = dataManager.selectedFiles[deviceAddress]
+    val csvFilesList = selectedDirectoryUri?.let { dataManager.deviceFilesList[it] } ?: emptySet()
 
     val openDocumentTreeLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -72,7 +74,6 @@ fun ViewData(
                 Log.e("DataManager", "Failed to take persistable URI permission for $parentUri", e)
             }
             selectedDirectoryUri = dataManager.createDeviceFolder(deviceAddress, parentUri)
-            // csvFilesList = selectedDirectoryUri?.let { dataManager.getCsvFilesList(it) }!!
             Log.d("ViewDataScreen", "Directory selected: $parentUri")
             Toast.makeText(context, "Directory selected: $parentUri", Toast.LENGTH_LONG).show()
 
@@ -159,6 +160,8 @@ fun ViewData(
                             dialogText = "Delete file?"
                         )
 
+                        val fileUri = dataManager.getFileUri(csvFile)
+
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -166,6 +169,22 @@ fun ViewData(
                                 .padding(vertical = 4.dp)
                         ) {
                             Text(text = csvFile, modifier = Modifier.weight(1f))
+                            if (selectedFile == fileUri ) {
+                                Button(
+                                    onClick = { dataManager.selectFile(deviceAddress, fileUri) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Green)
+                                ) {
+                                    Text(text = "Selected", fontSize = 12.sp)
+                                }
+                            } else {
+                                Button(
+                                    onClick = { dataManager.selectFile(deviceAddress, fileUri) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                                ) {
+                                    Text(text = "Select")
+                                }
+                            }
+                            
                             IconButton(
                                 onClick = {
 

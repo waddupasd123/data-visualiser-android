@@ -12,15 +12,15 @@ import java.util.Locale
 class DataManager(
     private val context: Context
 ) {
-
+    // STORAGE FORMAT - TO CHANGE
     // Device address to directory uri
     // Device uri to list of filenames
     // filename to file uri
 
     // Device uri to list of filenames
     val deviceFilesList = mutableStateMapOf<Uri, MutableSet<String>>()
-//    val timestamp = System.currentTimeMillis()
-//    val csvFile = File(deviceFolder, "data_$timestamp.csv")
+    // Device address to selected file uri
+    val selectedFiles = mutableStateMapOf<String, Uri>()
 
     fun loadDeviceFiles(deviceAddress: String) {
         val deviceUri = getDirectoryUri(deviceAddress)
@@ -80,6 +80,10 @@ class DataManager(
         // Remove device uri to filenames list
         editor.remove(uri.toString())
         editor.apply()
+
+        deviceFilesList.remove(uri)
+        selectedFiles.remove(deviceAddress)
+
         try {
             if (uri != null) {
                 DocumentsContract.deleteDocument(context.applicationContext.contentResolver, uri)
@@ -158,6 +162,10 @@ class DataManager(
         }
         editor.apply()
 
+        if (selectedFiles[deviceAddress] == fileUri) {
+            selectedFiles.remove(deviceAddress)
+        }
+
         try {
             DocumentsContract.deleteDocument(context.applicationContext.contentResolver, fileUri)
             Log.d("DataManager", "Deleted file: $fileUri")
@@ -167,5 +175,9 @@ class DataManager(
             Toast.makeText(context, "Failed to delete file: $fileUri", Toast.LENGTH_LONG).show()
 
         }
+    }
+
+    fun selectFile(deviceAddress: String, fileUri: Uri) {
+        selectedFiles[deviceAddress] = fileUri
     }
 }
