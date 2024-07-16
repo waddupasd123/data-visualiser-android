@@ -108,11 +108,11 @@ class MainActivity : ComponentActivity() {
                     NavHost(navController = navController, startDestination = "devices") {
                         composable("devices") {
                             BluetoothDevicesScreen(innerPadding, bluetoothManager, navController)
-
                         }
                         composable("viewData/{deviceAddress}") { backStackEntry ->
                             val deviceAddress = backStackEntry.arguments?.getString("deviceAddress")
                             if (deviceAddress != null) {
+                                dataManager.loadDeviceFiles(deviceAddress)
                                 ViewData(context, deviceAddress, bluetoothManager, dataManager, navController)
                             }
                         }
