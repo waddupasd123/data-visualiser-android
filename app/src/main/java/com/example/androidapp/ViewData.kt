@@ -15,8 +15,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
@@ -34,12 +37,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.toMutableStateList
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -143,27 +144,38 @@ fun ViewData(
                 ) {
                     Text(text = "Create New CSV File")
                 }
+                LazyColumn {
+                    items(csvFilesList.toList()) { csvFile ->
+                        // Delete file dialog
+                        var showDialog by remember { mutableStateOf(false) }
+                        ConfirmationDialog(
+                            showDialog = showDialog,
+                            onDismiss = { showDialog = false },
+                            onConfirm = {
+                                dataManager.deleteCsvFile(deviceAddress, csvFile)
+                                showDialog = false
+                            },
+                            dialogTitle = csvFile,
+                            dialogText = "Delete file?"
+                        )
 
-                csvFilesList.forEach { csvFile ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                    ) {
-                        Text(text = csvFile, modifier = Modifier.weight(1f))
-                        IconButton(
-                            onClick = {
-
-                            }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
                         ) {
-                            if (notificationsEnabled == true) {
-                                Icon(Icons.Filled.Lock, contentDescription = "Pause Notifications")
-                            } else {
-                                Icon(
-                                    Icons.Filled.PlayArrow,
-                                    contentDescription = "Enable Notifications"
-                                )
+                            Text(text = csvFile, modifier = Modifier.weight(1f))
+                            IconButton(
+                                onClick = {
+
+                                }
+                            ) {
+                                IconButton(onClick =  {
+                                    showDialog = true
+                                }) {
+                                    Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = Color.Red)
+                                }
                             }
                         }
                     }

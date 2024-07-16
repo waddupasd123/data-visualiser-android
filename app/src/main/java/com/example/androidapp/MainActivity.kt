@@ -1,10 +1,8 @@
 package com.example.androidapp
 
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -75,22 +73,7 @@ class MainActivity : ComponentActivity() {
                     }
             }
 
-        // Initialise data manager
-        val createFileLauncher = registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-        ) { result ->
-            if (result.resultCode == RESULT_OK) {
-                val uri: Uri? = result.data?.data
-                if (uri != null) {
-                    //dataManager.addCsvFile(uri)
-                    Toast.makeText(this, "CSV file created: $uri", Toast.LENGTH_LONG).show()
-                } else {
-                    Toast.makeText(this, "Failed to create CSV file", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-
-        dataManager = DataManager(this, createFileLauncher)
+        dataManager = DataManager(this)
         bluetoothManager = BluetoothManager(this, dataManager, permissionsLauncher, enableBluetoothLauncher)
         bluetoothManager.requestPermissions()
         bluetoothManager.loadKnownDevices()

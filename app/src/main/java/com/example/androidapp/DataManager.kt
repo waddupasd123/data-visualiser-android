@@ -1,25 +1,16 @@
 package com.example.androidapp
 
-import android.bluetooth.BluetoothGatt
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
-import android.os.Environment
 import android.provider.DocumentsContract
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.result.ActivityResultLauncher
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
-import java.io.File
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 
 class DataManager(
-    private val context: Context,
-    private val createFileLauncher: ActivityResultLauncher<Intent>
+    private val context: Context
 ) {
 
     // Device address to directory uri
@@ -88,7 +79,7 @@ class DataManager(
         }
         // Remove device uri to filenames list
         editor.remove(uri.toString())
-        editor.apply();
+        editor.apply()
         try {
             if (uri != null) {
                 DocumentsContract.deleteDocument(context.applicationContext.contentResolver, uri)
@@ -100,9 +91,11 @@ class DataManager(
     }
 
     fun createCsvFile(deviceAddress: String): Uri? {
+        // File Name
         val timestamp = System.currentTimeMillis()
         val simpleDateFormat = SimpleDateFormat("dd MMMM yyyy, HH:mm:ss", Locale.ENGLISH)
         val fileName = simpleDateFormat.format(timestamp)
+        // Creation
         val deviceFolderUri = getDirectoryUri(deviceAddress)
         return try {
             if (deviceFolderUri != null) {
@@ -145,5 +138,34 @@ class DataManager(
     fun getFileUri(fileName: String): Uri {
         val sharedPreferences = context.getSharedPreferences("DataManager", Context.MODE_PRIVATE)
         return Uri.parse(sharedPreferences.getString(fileName, ""))
+    }
+
+    fun deleteCsvFile(deviceAddress: String, fileName: String) {
+        val fileUri = getFileUri(fileName)
+        val deviceUri = getDirectoryUri(deviceAddress)
+        val sharedPreferences = context.getSharedPreferences("DataManager", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        //  Remove filenames to file uri
+        editor.remove(fileName)
+        // Remove filename from device uri set
+        if (deviceUri != null) {
+            val files = deviceFilesList[deviceUri] ?: mutableSetOf()
+            files.remove(fileName)
+            deviceFilesList.remove(deviceUri)
+            deviceFilesList[deviceUri] = files
+            Log.d("DataManager", deviceFilesList[deviceUri].toString())
+            sharedPreferences.edit().putStringSet(deviceUri.toString(), files).apply()
+        }
+        editor.apply()
+
+        try {
+            DocumentsContract.deleteDocument(context.applicationContext.contentResolver, fileUri)
+            Log.d("DataManager", "Deleted file: $fileUri")
+            Toast.makeText(context, "Deleted file: $fileUri", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Log.e("DataManager", "Failed to delete file: $fileUri", e)
+            Toast.makeText(context, "Failed to delete file: $fileUri", Toast.LENGTH_LONG).show()
+
+        }
     }
 }
