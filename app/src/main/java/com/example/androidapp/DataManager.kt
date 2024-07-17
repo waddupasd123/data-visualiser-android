@@ -1,6 +1,7 @@
 package com.example.androidapp
 
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
 import android.provider.DocumentsContract
@@ -194,5 +195,15 @@ class DataManager(
                 }
             }
         }
+    }
+
+    fun shareFile(fileName: String) {
+        val fileUri = getFileUri(fileName)
+        val shareIntent: Intent = Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_STREAM, fileUri)
+            type = "text/csv"
+        }
+        context.startActivity(Intent.createChooser(shareIntent, null))
     }
 }

@@ -18,15 +18,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -169,22 +174,29 @@ fun ViewData(
                                 .padding(vertical = 4.dp)
                         ) {
                             Text(text = csvFile, modifier = Modifier.weight(1f))
+                            IconButton(onClick =  {  }) {
+                                Icon(Icons.Filled.Info, contentDescription = "Graph", tint = Color.White)
+                            }
                             if (selectedFile == fileUri ) {
-                                Button(
-                                    onClick = { dataManager.selectFile(deviceAddress, null) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Green)
+                                FilledIconButton(
+                                    onClick =  { dataManager.selectFile(deviceAddress, null) },
+                                    colors = IconButtonColors(
+                                        containerColor = Color.Green,
+                                        contentColor = Color.White,
+                                        disabledContainerColor = Color.Green,
+                                        disabledContentColor = Color.White
+                                    )
                                 ) {
-                                    Text(text = "Selected", fontSize = 12.sp)
+                                    Icon(Icons.Filled.Check, contentDescription = "Unselect", tint = Color.White)
                                 }
                             } else {
-                                Button(
-                                    onClick = { dataManager.selectFile(deviceAddress, fileUri) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
-                                ) {
-                                    Text(text = "Select")
+                                IconButton(onClick =  { dataManager.selectFile(deviceAddress, fileUri) }) {
+                                    Icon(Icons.Outlined.Check, contentDescription = "Select", tint = Color.Gray)
                                 }
                             }
-
+                            IconButton(onClick =  { dataManager.shareFile(csvFile) }) {
+                                Icon(Icons.Filled.Share, contentDescription = "Share", tint = Color.White)
+                            }
                             IconButton(onClick =  {
                                 showDialog = true
                             }) {
