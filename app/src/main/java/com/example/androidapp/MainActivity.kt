@@ -97,6 +97,15 @@ class MainActivity : ComponentActivity() {
                                 ViewData(context, deviceAddress, bluetoothManager, dataManager, navController)
                             }
                         }
+                        composable("viewData/{deviceAddress}/{fileName}") { backStackEntry ->
+                            val deviceAddress = backStackEntry.arguments?.getString("deviceAddress")
+                            val fileName = backStackEntry.arguments?.getString("fileName")
+                            if (deviceAddress != null) {
+                                if (fileName != null) {
+                                    GraphData(context, deviceAddress, fileName, dataManager, navController)
+                                }
+                            }
+                        }
                     }
                 }
 

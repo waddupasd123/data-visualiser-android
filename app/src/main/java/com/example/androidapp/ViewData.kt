@@ -90,7 +90,7 @@ fun ViewData(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = deviceAddress) },
+                title = { Text(text = deviceAddress, fontSize = 12.sp) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -174,7 +174,7 @@ fun ViewData(
                                 .padding(vertical = 4.dp)
                         ) {
                             Text(text = csvFile, modifier = Modifier.weight(1f))
-                            IconButton(onClick =  {  }) {
+                            IconButton(onClick =  { navController.navigate("viewData/${deviceAddress}/${csvFile}") }) {
                                 Icon(Icons.Filled.Info, contentDescription = "Graph", tint = Color.White)
                             }
                             if (selectedFile == fileUri ) {
