@@ -171,10 +171,11 @@ class BluetoothManager(
             {
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     if (characteristic?.uuid == characteristicUUID) {
-                        val data = characteristic?.getIntValue(
-                            BluetoothGattCharacteristic.FORMAT_SINT32,
-                            0
-                        )
+//                        val data = characteristic?.getIntValue(
+//                            BluetoothGattCharacteristic.FORMAT_SINT32,
+//                            0
+//                        )
+                        val data = characteristic?.getStringValue(0)
                         dataManager.updateDeviceData(gatt?.device?.address ?: "", data)
                         // Log.d("BluetoothManager", "Characteristic read: $data")
                     }
@@ -188,8 +189,9 @@ class BluetoothManager(
             )
             override fun onCharacteristicChanged(gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic?) {
                 if (characteristic?.uuid == characteristicUUID) {
-                    val data =
-                        characteristic?.getIntValue(BluetoothGattCharacteristic.FORMAT_SINT32, 0)
+//                    val data =
+//                        characteristic?.getIntValue(BluetoothGattCharacteristic.FORMAT_SINT32, 0)
+                    val data = characteristic?.getStringValue(0)
                     dataManager.updateDeviceData(gatt?.device?.address ?: "", data)
                     // Log.d("BluetoothManager", "Characteristic changed: $data")
                 }

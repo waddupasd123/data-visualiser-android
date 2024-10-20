@@ -24,7 +24,7 @@ class DataManager(
     // Device address to selected file uri
     val selectedFiles = mutableStateMapOf<String, Uri?>()
     // Device data
-    val deviceDataMap = mutableStateMapOf<String, Int>()
+    val deviceDataMap = mutableStateMapOf<String, String>()
 
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences("DataManager", Context.MODE_PRIVATE)
 
@@ -183,15 +183,17 @@ class DataManager(
     }
 
     // Update data here
-    fun updateDeviceData(deviceAddress: String, data: Int?) {
+    fun updateDeviceData(deviceAddress: String, data: String?) {
         if (data != null) {
-            deviceDataMap[deviceAddress] = data
+            val parts = data.split(";")
+            val time = parts[0]   // Time in milliseconds
+            val value = parts[1]   // Sensor value
+            deviceDataMap[deviceAddress] = value
             val contentResolver = context.applicationContext.contentResolver
             val fileUri = selectedFiles[deviceAddress]
             if (fileUri != null) {
-                val timestamp = System.currentTimeMillis()
                 contentResolver.openOutputStream(fileUri, "wa")?.writer().use {
-                    it?.write("$timestamp,$data\n")
+                    it?.write("$time,$value\n")
                 }
             }
         }
