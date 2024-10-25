@@ -1,6 +1,7 @@
 package com.example.androidapp
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,18 +20,24 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStartAxis
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.marker.rememberDefaultCartesianMarker
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
+import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
+import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.core.cartesian.AutoScrollCondition
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
+import com.patrykandpatrick.vico.core.common.Dimensions
+import com.patrykandpatrick.vico.core.common.shape.Shape
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
@@ -102,10 +109,29 @@ fun GraphData(
                         rememberLineCartesianLayer(),
                         startAxis = rememberStartAxis(
                             title = "Value",
+                            titleComponent = rememberTextComponent(color = Color.White),
                         ),
                         bottomAxis = rememberBottomAxis(
-                            title = "Time",
-                        )
+                            title = "Time (ms)",
+                            titleComponent = rememberTextComponent(color = Color.White),
+                        ),
+                        marker = rememberDefaultCartesianMarker(
+                            label = rememberTextComponent(
+                                color = Color.White,
+                                background = rememberShapeComponent(
+                                    color = Color.Black,
+                                    shape = Shape.Pill
+                                ),
+                                padding = Dimensions(16.0f,8.0f)
+                            ),
+                            valueFormatter = { _, x ->
+                                val time: Long = x[0].x.toLong()
+                                val index = xDataPoints.indexOf(time)
+                                val value = yDataPoints[index]
+                                Log.d("D", x[0].toString())
+                                "Value: $value | Time: $time ms"
+                            }
+                        ),
                     ),
                     modelProducer = cartesianChartModelProducer,
                     scrollState = scrollState,
